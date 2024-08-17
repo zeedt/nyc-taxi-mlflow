@@ -1,0 +1,4 @@
+fare_model_*
+./fare_model_*
+__pycache__
+./__pycache__
