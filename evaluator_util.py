@@ -67,7 +67,7 @@ thresholds = {
 
 ############## Threhold definition Ends #############
 
-def evaluate_model(test, baseline_dummy_model_name, base_line_artifact_uri, base_line_artifacts, model_artifact_path, model_artifacts, python_model_artifact_name, model_artifact_uri):
+def evaluate_model(test, baseline_dummy_model_name, base_line_artifact_uri, base_line_artifacts, model_artifact_path, model_artifacts, python_model_artifact_name, model_artifact_uri, signature = None, input_example=None):
     mlflow.pyfunc.log_model(
         artifact_path=base_line_artifact_uri,
         python_model=SklearnWrapper(baseline_dummy_model_name),
@@ -76,12 +76,13 @@ def evaluate_model(test, baseline_dummy_model_name, base_line_artifact_uri, base
         conda_env=conda_env
     )
 
-
     mlflow.pyfunc.log_model(
         artifact_path=model_artifact_path,
         python_model=SklearnWrapper(python_model_artifact_name),
         artifacts=model_artifacts,
         code_path=["main-manual-model-and-evaluation-with-threshold.py"],
+        signature = signature,
+        input_example=input_example,
         conda_env=conda_env
     )
 
@@ -105,3 +106,9 @@ def evaluate_model(test, baseline_dummy_model_name, base_line_artifact_uri, base
         validation_thresholds=thresholds,
         baseline_model=baseline_model_uri
     )
+
+
+def predict_data_with_saved_model(saved_model_path, data):
+    model=joblib.load(open(saved_model_path,'rb'))
+    return model.predict(data[model.feature_names_in_])
+    
