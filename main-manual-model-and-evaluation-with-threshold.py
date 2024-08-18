@@ -58,6 +58,11 @@ def custom_r2_error(eval_df, _builtin_metrics):
 def built_in_mean_on_target_error(_eval_df, builtin_metrics):
     return builtin_metrics['mean_on_target']
 
+custom_rmse_metric = make_metric(eval_fn=custom_rmse, greater_is_better=False, name='Root Mean Square Error')
+custom_mean_absolute_error_metric = make_metric(eval_fn=custom_mean_absolute_error, greater_is_better=False, name='Mean Absolute Error')
+custom_r2_error_metric = make_metric(eval_fn=custom_r2_error, greater_is_better=False, name='Root Square Error')
+built_in_mean_on_target_error_metric = make_metric(eval_fn=built_in_mean_on_target_error, greater_is_better=True, name='Training Score')
+
 ################# CUSTOM METRIC END #############################################
 
 ############## Threhold definition Starts #############
@@ -71,6 +76,50 @@ thresholds = {
 }
 
 ############## Threhold definition Ends #############
+
+def evaluate_model(test, baseline_dummy_model_name, base_line_artifact_uri, base_line_artifacts, model_artifact_path, model_artifacts, python_model_artifact_name, model_artifact_uri):
+    mlflow.pyfunc.log_model(
+        artifact_path=base_line_artifact_uri,
+        python_model=SklearnWrapper(baseline_dummy_model_name),
+        artifacts=base_line_artifacts,
+        code_path=["main-manual-model-and-evaluation-with-threshold.py"],
+        conda_env=conda_env
+    )
+
+
+    mlflow.pyfunc.log_model(
+        artifact_path=model_artifact_path,
+        python_model=SklearnWrapper(python_model_artifact_name),
+        artifacts=model_artifacts,
+        code_path=["main-manual-model-and-evaluation-with-threshold.py"],
+        conda_env=conda_env
+    )
+
+    ############# Model EValuation Starts ##################################
+
+    baseline_model_uri=mlflow.get_artifact_uri(base_line_artifact_uri)
+    model_uri = mlflow.get_artifact_uri(model_artifact_uri)
+    mlflow.evaluate(
+        model_uri,
+        test,
+        targets="fare_amount",
+        model_type='regressor',
+        evaluators=['default'],
+        custom_metrics=[
+            custom_rmse_metric,
+            custom_mean_absolute_error_metric,
+            custom_r2_error_metric,
+            built_in_mean_on_target_error_metric
+        ], # Custom Metrics
+        custom_artifacts=[], # Custom artifact
+        validation_thresholds=thresholds,
+        baseline_model=baseline_model_uri
+    )
+
+
+base_line_model_path = 'ml-flow-dummy-regressor-mode.pkl'
+base_line_artifacts = { "baseline_dummy_model" : base_line_model_path}
+base_line_artifact_uri = "baseline_dummy_model_pyfunc"
 
 with mlflow.start_run(experiment_id=experiment.experiment_id):
     mlflow.autolog(
@@ -88,59 +137,14 @@ with mlflow.start_run(experiment_id=experiment.experiment_id):
     #### BASELINE MODEL ########
     rmse, mae, r2 = train_and_generate_dummy_regressor_model(train_x, train_y, test_x, test_y, model_name='ml-flow-dummy-regressor-mode.pkl')
     print(f'Dummy regressor rmse {rmse}, mae {mae}, r2 {r2}')
-    
-    base_line_model_path = 'ml-flow-dummy-regressor-mode.pkl'
-    base_line_artifacts = { "baseline_dummy_model" : base_line_model_path}
-    base_line_artifact_uri = "baseline_dummy_model_pyfunc"
 
-    mlflow.pyfunc.log_model(
-        artifact_path=base_line_artifact_uri,
-        python_model=SklearnWrapper("baseline_dummy_model"),
-        artifacts=base_line_artifacts,
-        code_path=["main-manual-model-and-evaluation-with-threshold.py"],
-        conda_env=conda_env
-    )
-    
-    
     train_and_generate_linear_regression_model(train_x, train_y, test_x, test_y, model_name='ml-flow-trained-model-linear-regression.pkl')
     mlflow.log_artifact('lr-heat-map.png')
-    dtr_sklearn_model_path = 'ml-flow-trained-model-linear-regression.pkl'
-    dtr_artifacts = { "lr_sklearn_model" : dtr_sklearn_model_path}
-    dtr_artifact_uri = "lr_sklearn_model_pyfunc"
-    mlflow.pyfunc.log_model(
-        artifact_path=dtr_artifact_uri,
-        python_model=SklearnWrapper("lr_sklearn_model"),
-        artifacts=dtr_artifacts,
-        code_path=["main-manual-model-and-evaluation-with-threshold.py"],
-        conda_env=conda_env
-    )
+    lr_sklearn_model_path = 'ml-flow-trained-model-linear-regression.pkl'
+    lr_artifacts = { "lr_sklearn_model" : lr_sklearn_model_path}
+    lr_artifact_uri = "lr_sklearn_model_pyfunc"
     
-    ############# Model EValuation Starts ##################################
-    custom_rmse_metric = make_metric(eval_fn=custom_rmse, greater_is_better=False, name='Root Mean Square Error')
-    custom_mean_absolute_error_metric = make_metric(eval_fn=custom_mean_absolute_error, greater_is_better=False, name='Mean Absolute Error')
-    custom_r2_error_metric = make_metric(eval_fn=custom_r2_error, greater_is_better=False, name='Root Square Error')
-    built_in_mean_on_target_error_metric = make_metric(eval_fn=built_in_mean_on_target_error, greater_is_better=True, name='Training Score')
-    
-    baseline_model_uri=mlflow.get_artifact_uri(base_line_artifact_uri)
-    dtr_model_uri=mlflow.get_artifact_uri(dtr_artifact_uri)
-    mlflow.evaluate(
-        dtr_model_uri,
-        test,
-        targets="fare_amount",
-        model_type='regressor',
-        evaluators=['default'],
-        custom_metrics=[
-            custom_rmse_metric,
-            custom_mean_absolute_error_metric,
-            custom_r2_error_metric,
-            built_in_mean_on_target_error_metric
-        ], # Custom Metrics
-        custom_artifacts=[], # Custom artifact
-        validation_thresholds=thresholds,
-        baseline_model=baseline_model_uri
-    )
-    
-    ############# Model EValuation Ends ##################################
+    evaluate_model(test, 'baseline_dummy_model', base_line_artifact_uri, base_line_artifacts, lr_artifact_uri, lr_artifacts, 'lr_sklearn_model', lr_artifact_uri)
 
 with mlflow.start_run(experiment_id=experiment.experiment_id):
     mlflow.autolog(
@@ -155,18 +159,7 @@ with mlflow.start_run(experiment_id=experiment.experiment_id):
     test = test_x.copy()
     test['fare_amount'] = test_y['fare_amount'].copy()
     
-    base_line_model_path = 'ml-flow-dummy-regressor-mode.pkl'
-    base_line_artifacts = { "baseline_dummy_model" : base_line_model_path}
-    base_line_artifact_uri = "baseline_dummy_model_pyfunc"
-
-    mlflow.pyfunc.log_model(
-        artifact_path=base_line_artifact_uri,
-        python_model=SklearnWrapper("baseline_dummy_model"),
-        artifacts=base_line_artifacts,
-        code_path=["main-manual-model-and-evaluation-with-threshold.py"],
-        conda_env=conda_env
-    )
-    
+ 
     
     train_and_generate_decision_tree_regressor_model(train_x, train_y, test_x, test_y, model_name='ml-flow-trained-model-decision-tree-regressor.pkl')
     mlflow.log_artifact('dtr-heat-map.png')
@@ -174,40 +167,8 @@ with mlflow.start_run(experiment_id=experiment.experiment_id):
     dtr_artifacts = { "dtr_sklearn_model" : dtr_sklearn_model_path}
     dtr_artifact_uri = "dtr_sklearn_model_pyfunc"
     
-    mlflow.pyfunc.log_model(
-        artifact_path=dtr_artifact_uri,
-        python_model=SklearnWrapper("dtr_sklearn_model"),
-        artifacts=dtr_artifacts,
-        code_path=["main-manual-model-and-evaluation-with-threshold.py"],
-        conda_env=conda_env
-    )
+    evaluate_model(test, 'baseline_dummy_model', base_line_artifact_uri, base_line_artifacts, dtr_artifact_uri, dtr_artifacts, 'dtr_sklearn_model', dtr_artifact_uri)
     
-    ############# Model EValuation Starts ##################################
-    custom_rmse_metric = make_metric(eval_fn=custom_rmse, greater_is_better=False, name='Root Mean Square Error')
-    custom_mean_absolute_error_metric = make_metric(eval_fn=custom_mean_absolute_error, greater_is_better=False, name='Mean Absolute Error')
-    custom_r2_error_metric = make_metric(eval_fn=custom_r2_error, greater_is_better=False, name='Root Square Error')
-    built_in_mean_on_target_error_metric = make_metric(eval_fn=built_in_mean_on_target_error, greater_is_better=True, name='Training Score')
-    
-    baseline_model_uri=mlflow.get_artifact_uri(base_line_artifact_uri)
-    dtr_model_uri=mlflow.get_artifact_uri(dtr_artifact_uri)
-    mlflow.evaluate(
-        dtr_model_uri,
-        test,
-        targets="fare_amount",
-        model_type='regressor',
-        evaluators=['default'],
-        custom_metrics=[
-            custom_rmse_metric,
-            custom_mean_absolute_error_metric,
-            custom_r2_error_metric,
-            built_in_mean_on_target_error_metric
-        ], # Custom Metrics
-        custom_artifacts=[], # Custom artifact
-        validation_thresholds=thresholds,
-        baseline_model=baseline_model_uri
-    )
-    
-    ############# Model EValuation Ends ##################################
 
 
 
