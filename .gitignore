@@ -5,3 +5,4 @@ __pycache__
 ./mlruns/*
 mlruns
 *.pkl
+*-heat-map.png*
