@@ -4,6 +4,7 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.tree import DecisionTreeRegressor
+from sklearn.dummy import DummyRegressor
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 from clean_data import clean_data
 import joblib
@@ -46,6 +47,14 @@ def train_and_generate_decision_tree_regressor_model(train_x, train_y, test_x, t
     decision_tree_model.fit(train_x, train_y)
     joblib.dump(decision_tree_model,model_name)
     predicted_qualities2 = decision_tree_model.predict(test_x)
+    (rmse, mae, r2) = eval_metrics(test_y, predicted_qualities2)
+    return rmse, mae, r2
+
+def train_and_generate_dummy_regressor_model(train_x, train_y, test_x, test_y, model_name='fare_model_dummy_regressor.pkl'):
+    dummy_model = DummyRegressor()
+    dummy_model.fit(train_x, train_y)
+    joblib.dump(dummy_model,model_name)
+    predicted_qualities2 = dummy_model.predict(test_x)
     (rmse, mae, r2) = eval_metrics(test_y, predicted_qualities2)
     return rmse, mae, r2
 
