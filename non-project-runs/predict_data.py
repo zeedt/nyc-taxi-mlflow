@@ -1,8 +1,11 @@
+import sys
+
+# adding Folder_2 to the system path
+sys.path.insert(0, '../general_utils')
+
 import pandas as pd
 import joblib
-
-from clean_data import get_day_period, get_weather_period
-
+import data_cleaner
 
 ohe_columns = ['weather_period_FALL', 'weather_period_SPRING','weather_period_SUMMER', 'weather_period_WINTER',\
        'day_period_MIDDAY', 'day_period_MIDNIGHT', 'day_period_MORNING', 'day_period_NIGHT', 'payment_type_0', 'payment_type_1',\
@@ -24,8 +27,8 @@ def make_prediction(prediction_data):
         print('None of the fields can be null. Hence not processing')
         return
     
-    prediction_data['day_period'] = prediction_data['tpep_pickup_datetime'].apply(get_day_period)
-    prediction_data['weather_period'] = prediction_data['tpep_pickup_datetime'].apply(get_weather_period)
+    prediction_data['day_period'] = prediction_data['tpep_pickup_datetime'].apply(data_cleaner.get_day_period)
+    prediction_data['weather_period'] = prediction_data['tpep_pickup_datetime'].apply(data_cleaner.get_weather_period)
     prediction_data_encoded = pd.get_dummies(prediction_data, columns=['weather_period', 'day_period', 'payment_type'], dtype=int)
     prediction_data_encoded = pd.get_dummies(prediction_data_encoded, columns=['store_and_fwd_flag'], drop_first=True, dtype=int)
 
