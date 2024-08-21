@@ -1,0 +1,12 @@
+name: nyc_taxi_environment
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.8
+  - scikit-learn
+  - pandas
+  - numpy
+  - mlflow
+  - pip
+  - seaborn

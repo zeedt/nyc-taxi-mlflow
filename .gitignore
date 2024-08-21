@@ -2,3 +2,13 @@ fare_model_*
 ./fare_model_*
 __pycache__
 ./__pycache__
+./mlruns/*
+mlruns
+*.pkl
+*-heat-map.png*
+*/mlruns/*
+*/mlruns
+*/__pycache__
+*__pycache__*
+.vscode
+heat-map.png
