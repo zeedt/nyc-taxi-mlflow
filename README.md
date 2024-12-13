@@ -4,6 +4,21 @@ This project uses MLFlow to track and register machine learning models for predi
 
 This project uses two machine learning techniques which include Linear Regression and Decision Tree Regressor.
 
+### Prerequisite
+- Python
+- Data Cleaning and Processing
+- Correlation
+- Regression
+- MLflow
+
+Python and Mlflow must be installed to be able to setup this project locally.
+
+MLflow can be installed using belwo command
+
+```
+pip install mlflow
+```
+
 
 ### Overview of Directories
 
